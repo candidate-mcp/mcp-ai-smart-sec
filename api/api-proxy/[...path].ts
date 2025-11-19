@@ -7,7 +7,8 @@ export default async function handler(
   console.log('=== API 프록시 함수 호출됨 ===');
   console.log('Method:', req.method);
   console.log('URL:', req.url);
-  console.log('Headers:', req.headers);
+  console.log('Query:', req.query);
+  console.log('Body:', req.body ? 'present' : 'empty');
   
   // CORS 헤더 설정
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -28,46 +29,37 @@ export default async function handler(
   }
 
   try {
-    // URL에서 경로 추출
-    // req.url은 /api/api-proxy/v1beta/models/gemini-2.5-flash:generateContent 형식
-    // 또는 rewrites를 통해 /api-proxy/v1beta/models/gemini-2.5-flash:generateContent 형식
-    const url = req.url || '';
-    const host = req.headers.host || '';
-    
-    // URL 파싱
-    let pathname = '';
-    if (url.startsWith('http')) {
-      const urlObj = new URL(url);
-      pathname = urlObj.pathname;
-    } else {
-      // 상대 경로인 경우
-      const urlObj = new URL(url, `https://${host}`);
-      pathname = urlObj.pathname;
+    // 경로 재구성 - Vercel의 [...path]는 배열로 전달됨
+    let path = '';
+    if (Array.isArray(req.query.path)) {
+      path = req.query.path.join('/');
+    } else if (req.query.path) {
+      path = String(req.query.path);
     }
     
-    console.log('원본 pathname:', pathname);
-    
-    // /api/api-proxy/ 또는 /api-proxy/ 제거
-    let path = pathname.replace(/^\/(api\/)?api-proxy\//, '');
-    
-    // rewrites를 통해 온 경우, 쿼리에서 path 가져오기 시도
-    if (!path && req.query.path) {
-      path = Array.isArray(req.query.path) 
-        ? req.query.path.join('/') 
-        : String(req.query.path);
-    }
-    
-    if (!path) {
-      console.error('경로를 찾을 수 없습니다. pathname:', pathname, 'query:', req.query);
-      return res.status(400).json({ error: 'Invalid path', pathname, query: req.query });
+    // URL 디코딩 (필요한 경우)
+    try {
+      path = decodeURIComponent(path);
+    } catch (e) {
+      // 디코딩 실패 시 원본 사용
+      console.warn('URL 디코딩 실패, 원본 사용:', path);
     }
     
     console.log('추출된 경로:', path);
     
-    // 쿼리 파라미터 재구성
+    if (!path) {
+      console.error('경로를 찾을 수 없습니다. query:', req.query);
+      return res.status(400).json({ 
+        error: 'Invalid path', 
+        query: req.query,
+        url: req.url 
+      });
+    }
+    
+    // 쿼리 파라미터 재구성 (path 제외)
     const queryParams = new URLSearchParams();
     Object.entries(req.query).forEach(([key, value]) => {
-      if (value) {
+      if (key !== 'path' && value) {
         if (Array.isArray(value)) {
           value.forEach(v => queryParams.append(key, String(v)));
         } else {
@@ -89,6 +81,9 @@ export default async function handler(
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       if (req.body) {
         body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        console.log('요청 본문 길이:', body.length);
+      } else {
+        console.warn('POST 요청인데 본문이 없습니다.');
       }
     }
 
@@ -102,6 +97,13 @@ export default async function handler(
       headers['Accept'] = req.headers['accept'] as string;
     }
 
+    console.log('프록시 요청 전송:', {
+      method: req.method,
+      url: finalUrl,
+      hasBody: !!body,
+      headers
+    });
+
     // Gemini API로 프록시 요청
     const response = await fetch(finalUrl, {
       method: req.method,
@@ -114,7 +116,8 @@ export default async function handler(
     console.log('프록시 응답:', {
       status: response.status,
       statusText: response.statusText,
-      dataLength: data.length
+      dataLength: data.length,
+      dataPreview: data.substring(0, 200)
     });
     
     // 응답 헤더 복사 (CORS 관련 제외)
