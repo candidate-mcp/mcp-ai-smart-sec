@@ -121,15 +121,24 @@ export default async function handler(
     console.log('프록시 응답:', {
       status: response.status,
       statusText: response.statusText,
-      dataLength: data.length
+      dataLength: data.length,
+      contentType: response.headers.get('content-type')
     });
     
-    // 응답 헤더 복사 (CORS 관련 제외)
+    // 응답 헤더 복사 (CORS 관련 제외, Content-Type은 명시적으로 설정)
     response.headers.forEach((value, key) => {
-      if (!key.toLowerCase().startsWith('access-control-')) {
+      const lowerKey = key.toLowerCase();
+      // CORS 헤더는 이미 설정했으므로 제외
+      // Content-Type은 원본 유지
+      if (!lowerKey.startsWith('access-control-') && lowerKey !== 'content-encoding') {
         res.setHeader(key, value);
       }
     });
+    
+    // Content-Type이 없으면 기본값 설정
+    if (!response.headers.get('content-type')) {
+      res.setHeader('Content-Type', 'application/json');
+    }
 
     return res.status(response.status).send(data);
   } catch (error: any) {
