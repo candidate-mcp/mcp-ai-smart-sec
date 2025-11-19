@@ -56,9 +56,10 @@ export default async function handler(
       });
     }
     
-    // 쿼리 파라미터 재구성 (path 제외)
+    // 쿼리 파라미터 재구성 (path 제외 - Vercel의 catch-all 라우팅 파라미터)
     const queryParams = new URLSearchParams();
     Object.entries(req.query).forEach(([key, value]) => {
+      // 'path'는 Vercel의 catch-all 라우팅 파라미터이므로 제외
       if (key !== 'path' && value) {
         if (Array.isArray(value)) {
           value.forEach(v => queryParams.append(key, String(v)));
@@ -68,11 +69,13 @@ export default async function handler(
       }
     });
     
-    // API 키 추가
+    // API 키만 추가 (다른 쿼리 파라미터는 제외)
     queryParams.set('key', apiKey);
     
     const baseUrl = 'https://generativelanguage.googleapis.com';
     const finalUrl = `${baseUrl}/${path}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    
+    console.log('쿼리 파라미터 (path 제외):', Array.from(queryParams.entries()));
 
     console.log('프록시 대상 URL:', finalUrl);
 
