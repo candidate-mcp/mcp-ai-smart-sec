@@ -19,6 +19,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api-proxy/:path*",
+      "destination": "/api/api-proxy?path=:path*"
+    },
+    {
       "source": "/((?!api|service-worker\\.js).*)",
       "destination": "/index.html"
     }

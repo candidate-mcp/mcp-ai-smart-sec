@@ -44,7 +44,7 @@ self.addEventListener('fetch', (event) => {
           
           // Construct the proxy URL.
           const remainingPathAndQuery = requestUrl.substring(TARGET_URL_PREFIX.length);
-          const proxyUrl = `${self.location.origin}/api/api-proxy${remainingPathAndQuery}`;
+          const proxyUrl = `${self.location.origin}/api-proxy${remainingPathAndQuery}`;
           console.log(`Service Worker: Proxying to ${proxyUrl}`);
 
           const newHeaders = new Headers();
