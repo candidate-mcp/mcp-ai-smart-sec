@@ -31,6 +31,8 @@ export default async function handler(
     // URL에서 경로 추출
     // rewrites를 통해 /api/proxy/:path*가 /api/proxy로 오면, path는 쿼리 파라미터로 전달됨
     let path = '';
+    const url = req.url || '';
+    const urlObj = new URL(url, `https://${req.headers.host || 'example.com'}`);
     
     // 방법 1: 쿼리 파라미터에서 path 가져오기 (rewrites를 통해 온 경우)
     if (req.query.path) {
@@ -44,8 +46,6 @@ export default async function handler(
       }
     } else {
       // 방법 2: URL에서 직접 파싱
-      const url = req.url || '';
-      const urlObj = new URL(url, `https://${req.headers.host || 'example.com'}`);
       const pathname = urlObj.pathname;
       
       // /api/proxy/ 제거
@@ -64,12 +64,14 @@ export default async function handler(
       });
     }
     
-    // 쿼리 파라미터 재구성 (원본 쿼리 파라미터 유지)
+    // 쿼리 파라미터 재구성 (원본 쿼리 파라미터 유지, path 제외)
     const queryParams = new URLSearchParams();
     
-    // 원본 URL의 쿼리 파라미터 복사
+    // 원본 URL의 쿼리 파라미터 복사 (path 제외)
     urlObj.searchParams.forEach((value, key) => {
-      queryParams.append(key, value);
+      if (key !== 'path') {
+        queryParams.append(key, value);
+      }
     });
     
     // API 키 추가
