@@ -28,16 +28,20 @@ export default async function handler(
   }
 
   try {
-    // 경로 재구성 - Vercel의 [...path]는 배열로 전달됨
+    // 경로 재구성 - Vercel의 [...slug]는 배열로 전달됨
     let path = '';
-    if (Array.isArray(req.query.path)) {
-      path = req.query.path.join('/');
-    } else if (req.query.path) {
-      path = String(req.query.path);
+    if (Array.isArray(req.query.slug)) {
+      path = req.query.slug.join('/');
+    } else if (req.query.slug) {
+      path = String(req.query.slug);
     }
     
     // URL 디코딩 (필요한 경우)
-    path = decodeURIComponent(path);
+    try {
+      path = decodeURIComponent(path);
+    } catch (e) {
+      // 디코딩 실패 시 원본 사용
+    }
     
     console.log('API 프록시 요청:', {
       method: req.method,
@@ -46,10 +50,10 @@ export default async function handler(
       query: req.query
     });
     
-    // 쿼리 파라미터 재구성 (path 제외)
+    // 쿼리 파라미터 재구성 (slug 제외)
     const queryParams = new URLSearchParams();
     Object.entries(req.query).forEach(([key, value]) => {
-      if (key !== 'path' && value) {
+      if (key !== 'slug' && value) {
         if (Array.isArray(value)) {
           value.forEach(v => queryParams.append(key, String(v)));
         } else {
