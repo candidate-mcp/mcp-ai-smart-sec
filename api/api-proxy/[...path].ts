@@ -4,6 +4,11 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  console.log('=== API 프록시 함수 호출됨 ===');
+  console.log('Method:', req.method);
+  console.log('URL:', req.url);
+  console.log('Query:', req.query);
+  
   // CORS 헤더 설정
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');

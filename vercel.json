@@ -2,6 +2,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "functions": {
+    "api/api-proxy/[...path].ts": {
+      "runtime": "@vercel/node"
+    }
+  },
   "headers": [
     {
       "source": "/service-worker.js",
@@ -19,7 +24,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!service-worker\\.js|api/).*)",
+      "source": "/((?!api|service-worker\\.js).*)",
       "destination": "/index.html"
     }
   ]
