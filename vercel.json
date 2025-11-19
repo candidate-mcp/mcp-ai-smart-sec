@@ -19,7 +19,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!service-worker\\.js).*)",
+      "source": "/((?!service-worker\\.js|api/).*)",
       "destination": "/index.html"
     }
   ]

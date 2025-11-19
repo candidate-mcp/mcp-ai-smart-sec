@@ -16,16 +16,30 @@ export default async function handler(
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
+    console.error('GEMINI_API_KEY가 설정되지 않았습니다.');
     return res.status(500).json({ 
       error: 'GEMINI_API_KEY가 설정되지 않았습니다. Vercel 환경 변수를 확인해주세요.' 
     });
   }
 
   try {
-    // 경로 재구성
-    const path = Array.isArray(req.query.path) 
-      ? req.query.path.join('/') 
-      : req.query.path || '';
+    // 경로 재구성 - Vercel의 [...path]는 배열로 전달됨
+    let path = '';
+    if (Array.isArray(req.query.path)) {
+      path = req.query.path.join('/');
+    } else if (req.query.path) {
+      path = String(req.query.path);
+    }
+    
+    // URL 디코딩 (필요한 경우)
+    path = decodeURIComponent(path);
+    
+    console.log('API 프록시 요청:', {
+      method: req.method,
+      path,
+      hasBody: !!req.body,
+      query: req.query
+    });
     
     // 쿼리 파라미터 재구성 (path 제외)
     const queryParams = new URLSearchParams();
@@ -45,17 +59,22 @@ export default async function handler(
     const baseUrl = 'https://generativelanguage.googleapis.com';
     const url = `${baseUrl}/${path}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
 
+    console.log('프록시 대상 URL:', url);
+
     // 요청 본문 처리
     let body: string | undefined;
-    if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
-      body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      if (req.body) {
+        body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      }
     }
 
     // 요청 헤더 구성
-    const headers: Record<string, string> = {};
-    if (req.headers['content-type']) {
-      headers['Content-Type'] = req.headers['content-type'] as string;
-    }
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // 원본 요청의 헤더 복사 (필요한 것만)
     if (req.headers['accept']) {
       headers['Accept'] = req.headers['accept'] as string;
     }
@@ -63,15 +82,24 @@ export default async function handler(
     // Gemini API로 프록시 요청
     const response = await fetch(url, {
       method: req.method,
-      headers: Object.keys(headers).length > 0 ? headers : undefined,
+      headers,
       body,
     });
 
     const data = await response.text();
     
-    // 응답 헤더 복사
+    console.log('프록시 응답:', {
+      status: response.status,
+      statusText: response.statusText,
+      dataLength: data.length
+    });
+    
+    // 응답 헤더 복사 (CORS 관련 제외)
     response.headers.forEach((value, key) => {
-      res.setHeader(key, value);
+      // CORS 헤더는 이미 설정했으므로 제외
+      if (!key.toLowerCase().startsWith('access-control-')) {
+        res.setHeader(key, value);
+      }
     });
 
     return res.status(response.status).send(data);
@@ -79,7 +107,8 @@ export default async function handler(
     console.error('API 프록시 오류:', error);
     return res.status(500).json({ 
       error: '프록시 요청 실패', 
-      details: error.message 
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }

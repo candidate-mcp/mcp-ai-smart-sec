@@ -37,7 +37,7 @@ const App = () => {
           const targetPrefix = 'https://generativelanguage.googleapis.com';
 
           if (typeof resource === 'string' && resource.startsWith(targetPrefix)) {
-            const newUrl = `/api-proxy${resource.substring(targetPrefix.length)}`;
+            const newUrl = `/api/api-proxy${resource.substring(targetPrefix.length)}`;
             console.log(`[iOS Workaround] Proxying fetch request to: ${newUrl}`);
             args[0] = newUrl;
           }
